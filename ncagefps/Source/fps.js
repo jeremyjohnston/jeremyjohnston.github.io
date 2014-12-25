@@ -60,12 +60,12 @@ var cagebox = new Bitmap('../Assets/cagebox.jpg', 1920, 1080);
 //var clouds = new Bitmap('../Assets/seamlessClouds.jpg', 800, 553);
 
 // Ground textures
-var bw = new Bitmap('../Assets/bw.jpg', 250, 202);
+var bw = new Bitmap('../Assets/bw_christmas.png', 250, 202);
 var bwSeamless = new Bitmap('../Assets/seamlessBW_big.jpg', 2048, 1655);
 var sand = new Bitmap('../Assets/seamlessSand.jpg', 900, 900);
 
 // Enemy textures
-var bunny = new Bitmap('../Assets/bunnyCage.png', 627, 480);
+var bunny = new Bitmap('../Assets/bunnyCage_christmas.png', 627, 480);
 
 
 // Game Texture settings
@@ -667,7 +667,7 @@ function Camera(canvas, resolution, fov) {
 	this.scale = (this.width + this.height) / 1200;
 }
 
-Camera.prototype.render = function(player, enemies, map, seconds) {
+Camera.prototype.render = function(player, enemies, map, seconds, elapsed, limit) {
 	
 	//hold a set of distances to closest object in each rendered column
 	var columns = [];
@@ -687,9 +687,12 @@ Camera.prototype.render = function(player, enemies, map, seconds) {
 	
 	this.drawMinimap(player, enemies, map);
 	this.drawScore(map.score);
+    this.drawElapsed(elapsed, limit);
 	
 	if(winCondition(enemies))
-		this.drawWin();
+		this.drawWin();       
+    else if(gameOver(elapsed, limit))
+        this.drawGameOver();
 	
 };
 
@@ -937,24 +940,45 @@ Camera.prototype.drawEntity = function(player, entity, map){
 };
 
 Camera.prototype.drawReticle = function(texture){
-  var x = this.width/2 - texture.width/2;
+    var x = this.width/2 - texture.width/2;
 	var y = this.height/2 - texture.height/2;
 	this.ctx.drawImage(texture.image, x, y, texture.width, texture.height);
 };
 
 Camera.prototype.drawScore = function(score){
-	var text = "Bunnies Boxed: " + score;
+	var text = "BUNNIES BOXED: " + score;
 	this.ctx.fillStyle = "#FF0000";
-	this.ctx.font="20px Georgia";
-	this.ctx.fillText(text, 0.4 * this.width, 20);
+	this.ctx.font="18px Georgia";
+	this.ctx.fillText(text, 0.2 * this.width, 20);
 
+};
+
+Camera.prototype.drawElapsed = function(elapsed, limit){
+
+    var left = Math.round(limit - elapsed);
+    
+    if(left < 0){
+        left = 0; 
+    }
+    var text = "TIME: " + left 
+    this.ctx.fillStyle = "#FF0000";
+	this.ctx.font="18px Georgia";
+	this.ctx.fillText(text, 0.6 * this.width, 20);
+    
 };
 
 Camera.prototype.drawWin = function(){
 	var text = "WIN";
 	this.ctx.fillStyle = "#FF0000";
-	this.ctx.font="200px Georgia";
+	this.ctx.font="100px Georgia";
 	this.ctx.fillText(text, 0.2 * this.width, 0.7 * this.height);
+}
+
+Camera.prototype.drawGameOver = function(){
+	var text = "GAME OVER";
+	this.ctx.fillStyle = "#FF0000";
+	this.ctx.font="100px Georgia";
+	this.ctx.fillText(text, 0.05 * this.width, 0.5 * this.height);
 }
 
 Camera.prototype.drawLine = function(x, y, x2, y2, color){
@@ -1143,6 +1167,14 @@ function winCondition(enemies){
 	return true;
 }
 
+function gameOver(elapsed, limit){
+    var left = Math.round(limit - elapsed); 
+    if(left < 1)
+        return true;
+        
+    return false;
+}
+
 function getHit(ray){
 	var hit = -1;
 	while (++hit < ray.length && ray[hit].height <= 0);
@@ -1169,15 +1201,16 @@ GameLoop.prototype.frame = function(time) {
 };
 
 // Create each object
+
 var display = document.getElementById('display');
 
 var _missile = new Missile(0, 0, Math.PI * 0.3, 8, missileTextureData, boomTextureData);
 var weapon = new Weapon(weaponBM, _missile, 20);
 
 
-var map = new Map(16, 3, wallBM, skyBM, groundBM);
+var map = new Map(24, 5, wallBM, skyBM, groundBM);
 map.randomize();
-var p = map.getPoint(19+2);
+var p = map.getPoint(29+2);
 var player = new Player(p.x, p.y, 0, weapon);
 
 var controls = new Controls();
@@ -1185,7 +1218,7 @@ var camera = new Camera(display, MOBILE ? 160 : 320, Math.PI * 0.4);
 var loop = new GameLoop();
 
 var enemies = [];
-var enemyCount = 10;
+var enemyCount = 50;
 
 for(var i = 0; i < enemyCount; i++){
 	enemies.push(new Enemy(2, 100, 100, enemyTextureData));
@@ -1200,6 +1233,47 @@ var duration = 5;
 console.debug(duration);
 var elapsed = 0;
 var played = false;
+var limit = 60 
+
+
+function reset(){
+
+    display = document.getElementById('display');
+
+    _missile = new Missile(0, 0, Math.PI * 0.3, 8, missileTextureData, boomTextureData);
+    weapon = new Weapon(weaponBM, _missile, 20);
+
+
+    map = new Map(24, 5, wallBM, skyBM, groundBM);
+    map.randomize();
+    p = map.getPoint(29+2);
+    player = new Player(p.x, p.y, 0, weapon);
+
+    controls = new Controls();
+    camera = new Camera(display, MOBILE ? 160 : 320, Math.PI * 0.4);
+    loop = new GameLoop();
+
+    enemies = [];
+    enemyCount = 50;
+
+    for( var i = 0; i < enemyCount; i++){
+        enemies.push(new Enemy(2, 100, 100, enemyTextureData));
+    }
+
+    map.spawn(enemies);
+
+    //Start level intro music, 'put bunny back in the box' line
+    audioBunny_line.play();
+
+    duration = 5;
+    console.debug(duration);
+    elapsed = 0;
+    played = false;
+    limit = 60 
+
+}
+
+
 
 // Start Game
 loop.start(function frame(seconds) {
@@ -1212,7 +1286,7 @@ loop.start(function frame(seconds) {
 	
 	map.collisionCheck(enemies, player.weapon.missiles);
 	
-	camera.render(player, enemies, map, seconds);
+	camera.render(player, enemies, map, seconds, elapsed, limit);
 	
 	elapsed += seconds;
 	//console.debug(elapsed);
@@ -1222,5 +1296,8 @@ loop.start(function frame(seconds) {
 		played = true;
 	}
 	
+    if(elapsed > limit + 5){
+        reset()
+    }
 	 
 });
